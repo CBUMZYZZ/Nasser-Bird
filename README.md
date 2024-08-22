@@ -1,4 +1,4 @@
-## Link para o jogo Nasser Bird feito por mim
+## Link para o jogo Nasser Bird
 
   https://scratch.mit.edu/projects/970756478
 

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Truco Online</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        .card-container { margin-top: 20px; display: flex; justify-content: center; gap: 10px; }
+        .card { width: 50px; height: 70px; display: flex; align-items: center; justify-content: center; border: 1px solid black; cursor: pointer; background-color: white; }
+        .hidden-card { background-color: gray; }
+        .game-area { display: flex; flex-direction: column; align-items: center; }
+        .bot-hand { margin-bottom: 20px; }
+        #center-cards { display: flex; gap: 10px; margin-top: 30px; }
+        .center-card { width: 50px; height: 70px; background-color: gray; border: 1px solid black; }
+        .vira-container { display: flex; justify-content: center; margin-top: 20px; }
+        .vira { width: 50px; height: 70px; background-color: white; border: 1px solid black; display: flex; align-items: center; justify-content: center; }
+    </style>
+</head>
+<body>
+    <h1>Truco Online - Jogue Contra o Robô</h1>
+    <p id="score">Placar: Você 0 - 0 Robô</p>
+    <p id="vira">Vira: ?</p>
+    <p id="message">Clique em 'Iniciar Jogo' para começar!</p>
+    <button onclick="startGame()" id="start-button">Iniciar Jogo</button>
+    <button onclick="distributeCards()" id="distribute-button" style="display: none;">Distribuir Cartas</button>
+    <div class="game-area">
+        <div class="card-container bot-hand" id="bot-hand">
+            <div class="card hidden-card"></div>
+            <div class="card hidden-card"></div>
+            <div class="card hidden-card"></div>
+        </div>
+        <div class="card-container" id="player-hand"></div>
+    </div>
+    <p id="bot-move"></p>
+
+    <!-- Área onde as cartas jogadas vão aparecer -->
+    <div id="center-cards"></div>
+
+    <!-- A carta Vira exibida -->
+    <div class="vira-container">
+        <div id="vira-card" class="vira"></div>
+    </div>
+
+    <script>
+        const deck = ["4♦", "5♠", "6♥", "7♣", "Q♦", "J♠", "K♥", "A♣", "2♦", "3♠", "4♠", "5♥", "6♦", "7♦", "Q♠", "J♦", "K♣", "A♥", "2♠", "3♣"];
+        let playerHand = [];
+        let botHand = [];
+        let vira = null;
+        let playerScore = 0;
+        let botScore = 0;
+        let round = 1;
+        let gameStarted = false;
+
+        // Função para iniciar o jogo
+        function startGame() {
+            if (!gameStarted) {
+                gameStarted = true;
+                document.getElementById("message").textContent = "Clique em 'Distribuir Cartas' para pegar suas cartas!";
+                document.getElementById("start-button").style.display = "none";
+                document.getElementById("distribute-button").style.display = "inline";
+            }
+        }
+
+        // Função para distribuir as cartas
+        function distributeCards() {
+            if (!gameStarted) return;
+            let shuffledDeck = [...deck].sort(() => Math.random() - 0.5);
+            vira = shuffledDeck[6];  // A carta vira é a sétima carta do baralho embaralhado
+            playerHand = shuffledDeck.slice(0, 3);  // Jogador recebe 3 cartas
+            botHand = shuffledDeck.slice(3, 6);  // Robô recebe 3 cartas
+
+            // Exibe a carta vira como uma carta normal
+            document.getElementById("vira").textContent = "Vira: " + vira;
+            document.getElementById("vira-card").textContent = vira; // Exibe a carta vira
+
+            document.getElementById("message").textContent = "Escolha uma carta para jogar!";
+            updateHands();
+            round = 1;
+            playerScore = 0;
+            botScore = 0;
+            updateScore();
+            document.getElementById("bot-move").textContent = "";
+            document.getElementById("distribute-button").style.display = "none";
+        }
+
+        // Função para jogar uma carta
+        function playCard(cardIndex) {
+            if (round > 3) return;
+            let playerCard = playerHand.splice(cardIndex, 1)[0];
+            let botCard = botHand.splice(Math.floor(Math.random() * botHand.length), 1)[0];
+
+            // Cria o visual das cartas jogadas (cartas ainda viradas)
+            const centerCards = document.getElementById("center-cards");
+            const playerPlayedCard = document.createElement("div");
+            playerPlayedCard.classList.add("center-card");
+            playerPlayedCard.textContent = playerCard;
+            playerPlayedCard.style.backgroundColor = 'gray'; // Carta jogada pelo jogador ainda está virada
+
+            const botPlayedCard = document.createElement("div");
+            botPlayedCard.classList.add("center-card");
+            botPlayedCard.textContent = botCard;
+            botPlayedCard.style.backgroundColor = 'gray'; // Carta jogada pelo robô ainda está virada
+
+            centerCards.appendChild(playerPlayedCard);
+            centerCards.appendChild(botPlayedCard);
+
+            // O jogador jogou primeiro
+            setTimeout(() => {
+                const winner = determineWinner(playerCard, botCard);
+
+                // Revele as cartas após determinar o vencedor
+                playerPlayedCard.style.backgroundColor = 'white'; // Carta do jogador visível
+                botPlayedCard.style.backgroundColor = 'white'; // Carta do robô visível
+
+                document.getElementById("bot-move").textContent = "O robô jogou: " + botCard;
+
+                if (winner === "player") {
+                    playerScore++;
+                    document.getElementById("message").textContent = `Você ganhou a rodada ${round}! ${playerCard} vs ${botCard}`;
+                } else if (winner === "bot") {
+                    botScore++;
+                    document.getElementById("message").textContent = `O robô ganhou a rodada ${round}! ${playerCard} vs ${botCard}`;
+                } else {
+                    document.getElementById("message").textContent = `Empate na rodada ${round}! ${playerCard} vs ${botCard}`;
+                }
+
+                round++;
+                updateScore();
+                updateHands();
+
+                if (round > 3) {
+                    document.getElementById("message").textContent = playerScore > botScore ? "Você venceu o jogo!" : "O robô venceu o jogo!";
+                    document.getElementById("distribute-button").style.display = "inline";
+                    gameStarted = false;
+                }
+            }, 1000); // Atraso de 1 segundo para revelar as cartas e determinar o vencedor
+        }
+
+        // Função para determinar o vencedor
+        function determineWinner(playerCard, botCard) {
+            let cardOrder = {
+                "4": 1, "5": 2, "6": 3, "7": 4, "Q": 5, "J": 6, "K": 7, "A": 8, "2": 9, "3": 10
+            };
+
+            let playerCardValue = cardOrder[playerCard.charAt(0)];
+            let botCardValue = cardOrder[botCard.charAt(0)];
+
+            // Se a carta for a vira, adiciona bônus
+            if (playerCard === vira) playerCardValue += 10;
+            if (botCard === vira) botCardValue += 10;
+
+            if (playerCardValue > botCardValue) return "player";
+            if (playerCardValue < botCardValue) return "bot";
+            return "draw";
+        }
+
+        // Função para atualizar o placar
+        function updateScore() {
+            document.getElementById("score").textContent = `Placar: Você ${playerScore} - ${botScore} Robô`;
+        }
+
+        // Função para atualizar as mãos de cartas
+        function updateHands() {
+            document.getElementById("player-hand").innerHTML = playerHand.map((card, index) => `<div class='card' onclick='playCard(${index})'>${card}</div>`).join("");
+            document.getElementById("bot-hand").innerHTML = botHand.map(() => `<div class='card hidden-card'></div>`).join("");
+        }
+    </script>
+</body>
+</html>
